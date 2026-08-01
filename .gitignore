@@ -1,0 +1,22 @@
+# Python（部分攻击脚本/验证可能产生）
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# OS / 编辑器
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# 本地敏感（绝不提交）
+.secrets
+.env
+*.bak
+*.bak.*
