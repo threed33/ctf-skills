@@ -34,16 +34,24 @@
 
 ⚡ = 四级深叶子。共 **26 个 skill**（1 master + 3 router + 21 三级 leaf + 1 四级）。
 
-## 安装（把 skill 挂到 Claude Code / reasonix 的加载路径）
+## 安装（把 skill 拷到 Claude Code / reasonix 的加载路径）
 
 ```bash
 git clone https://github.com/threed33/ctf-skills.git ~/projects/ctf-skills
-bash ~/projects/ctf-skills/scripts/install-symlinks.sh
+bash ~/projects/ctf-skills/scripts/install.sh
 ```
 
-`install-symlinks.sh` 在 `~/.claude/skills` 和 `~/.reasonix/skills` 下为每个 `ctf-*` 建符号链接指向本仓库（幂等；已存在的旧真身/错误链接会备份为 `.bak`）。**单一源**——编辑仓库内文件，两侧即时生效，永不漂移。
+`install.sh` 把仓库 `skills/ctf-*` **拷贝**为 `~/.claude/skills` 与 `~/.reasonix/skills` 下的真身副本（覆盖旧副本）。skill 文件很小（全部 ~320K），copy 模式对加载器最稳、无 symlink 依赖。
 
-校验安装：`bash scripts/verify-tree.sh`。
+**日常同步**（copy 模式有三份：仓库 canonical + 两个加载副本）：
+
+```bash
+bash scripts/sync.sh          # pull（默认）：~/.claude 工作副本 → 仓库 + ~/.reasonix，再 git commit && push
+bash scripts/sync.sh push     # 仓库 → 两侧（拉了新内容后分发）
+bash scripts/sync.sh status   # 三方 diff 概览
+```
+
+校验：`bash scripts/verify-tree.sh`。
 
 ## 目录
 
@@ -51,9 +59,9 @@ bash ~/projects/ctf-skills/scripts/install-symlinks.sh
 skills/                     26 个 ctf-* skill（每个一个 SKILL.md）
 docs/SKILLTREE.md           架构详解（背景 / 调用机制 / 四级规则 / 维护指南）
 scripts/
-  install-symlinks.sh       把仓库 skills 挂载为两侧加载路径下的 symlink
-  verify-tree.sh            校验 26 symlink 有效 + 路由表引用闭合
-  sync-reasonix.sh          兼容旧命令名（现等价于重跑 install）
+  install.sh                把仓库 skills 拷贝为两侧加载路径下的真身副本
+  sync.sh                   仓库 ↔ 两侧副本同步（pull / push / status）
+  verify-tree.sh            校验三方一致 + 路由表引用闭合
 ```
 
 ## 知识增长纪律
