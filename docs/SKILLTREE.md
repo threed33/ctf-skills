@@ -2,7 +2,7 @@
 
 > **本文件是 CTF 解题 skill 系统的长期架构参考**：记录 v2 三级化迭代的结果、调用机制、知识增长纪律、两系统同步状态，以及以后怎么维护（加 leaf、决定拆几级）。
 > **不是某场比赛的产物**——这场能力迭代源于 2026-07-31 TopSecCTF 赛后复盘（见 `topsecctf/RETROSPECTIVE.md`），但 skill 树是系统级资产，持续演进。
-> 建立日期：2026-08-01。canonical 源：`~/.claude/skills/`（reasonix 镜像同步）。
+> 建立日期：2026-08-01。canonical 源：git 仓库 `~/projects/ctf-skills/`（[github.com/threed33/ctf-skills](https://github.com/threed33/ctf-skills)，public）；`~/.claude/skills/ctf-*` 与 `~/.reasonix/skills/ctf-*` 均为指向仓库的 symlink（v2.2 仓库化）。
 
 ---
 
@@ -105,38 +105,47 @@ skill 本质是一个 md 文件，不该把所有知识塞进一个 skill。**v2
 - **hack-skills-main**（102 子技能渗透 playbook 库）：CTF leaf 的**深度参考**——穷尽技巧/WAF 矩阵/真实 CVE 时，leaf 里用 `hack-skills-main/skills/<x>/SKILL.md` 链接指向它。CTF leaf 自包含（拿 flag 即止、不写修复、靶机不出网优先本地回显），hack-skills-main 是补充不是依赖。
 - **auto-pentest**：与 ctf-master 并列的第二种模式（渗透 vs 解题），共享 vulnclaw，目录/目标/报告不同。三级 leaf 不被 auto-pentest 调用。
 
-## 8. 两系统同步状态（2026-08-01）
+## 8. 仓库化与两系统同步（v2.2，2026-08-01）
 
-| 系统 | 路径 | 内容 |
+skill 树已建成 git 项目仓库作为**唯一 canonical 源**，两个加载路径都是指向它的 symlink——彻底告别手动 cp 同步、永不漂移。
+
+| 角色 | 路径 | 说明 |
 |---|---|---|
-| Claude Code（canonical） | `~/.claude/skills/` | 26 ctf skill（1 master + 3 router + 21 三级 + 1 四级）+ hack-skills-main(102) + auto-pentest |
-| reasonix（镜像） | `~/.reasonix/skills/` | 同上，全 byte-identical |
+| **canonical 源（git 仓库）** | `~/projects/ctf-skills/` | 26 ctf skill 真身 + docs + scripts；远程 [github.com/threed33/ctf-skills](https://github.com/threed33/ctf-skills)（public） |
+| Claude Code 加载路径 | `~/.claude/skills/ctf-*` | 26 个 symlink → 仓库；`hack-skills-main`/`auto-pentest` 仍是各自真身（非本仓库） |
+| reasonix 加载路径 | `~/.reasonix/skills/ctf-*` | 26 个 symlink → 同一仓库源（与 .claude 真正同文件） |
 
-- **canonical = `.claude`**：CTF 实战都在 Claude Code 跑、改 `.claude/skills/`，改完推送 `.reasonix`。
-- hack-skills-main 已两边都有（2026-08-01 推送 reasonix），深度参考链接两系统都生效。
-- memory（`~/.claude/.../memory/` 与 `~/.reasonix/memory/global/`）也已对齐，本架构决策两边都有 `project-ctf-skilltree-three-level`。
+- **单一源**：编辑仓库内 `skills/<x>/SKILL.md`，两个加载路径即时生效。解题时往 skill 写经验直接落进 git。
+- **安装到新机器**：`git clone <repo> ~/projects/ctf-skills && bash scripts/install-symlinks.sh`（幂等建两侧 symlink）。
+- **校验**：`bash scripts/verify-tree.sh`（26 symlink 有效 + 路由表引用闭合）。
+- `hack-skills-main`（102 渗透 playbook，第三方完整项目）与 `auto-pentest` 不纳入仓库，留在 `~/.claude/skills/` 原地；CTF leaf 对 `hack-skills-main/...` 的深度参考链接仍有效。
+- memory（`~/.claude/.../memory/` 与 `~/.reasonix/memory/global/`）仍各自维护，本架构决策两边都有 `project-ctf-skilltree-three-level`。
 
 ## 9. 演进时间线
 
 - **v1（2026-07 前后）**：平坦两级，知识堆总纲 → 总纲臃肿。
 - **v2（2026-07-31）**：三级化重构。workflow 并行编写 21 三级 leaf + 重构 3 二级 router；★ leaf 结晶 TopSecCTF 真题数据。
 - **v2.1（2026-08-01）**：RSA 外科手术式拆四级（仅 related-message）；hack-skills-main 推 reasonix；两系统完全对齐。
+- **v2.2（2026-08-01）**：仓库化。skill 树建成 git 项目 `threed33/ctf-skills`（public）作唯一 canonical 源；`.claude`/`.reasonix` 两加载路径全部改 symlink 指向仓库，告别 cp 同步。配套 `install-symlinks.sh`/`verify-tree.sh`/`sync-reasonix.sh`。
 
 ## 10. 维护指南
 
 **加一个新 leaf**：
-1. 确定考点锚点 → 命名 `ctf-<track>-<vuln>`，`mkdir ~/.claude/skills/<name>`。
+1. 确定考点锚点 → 命名 `ctf-<track>-<vuln>`，在仓库建 `~/projects/ctf-skills/skills/<name>/SKILL.md`。
 2. 按模板写 SKILL.md（frontmatter description 揉满指纹词 + 识别特征 + 核心手法 + 实战结晶 + 工具命令 + 深度参考 + 关联 leaf）。模板见任一现有 ★ leaf。
 3. 二级 router 路由表加一行（识别特征 → 新 leaf）。
-4. `cp -r` 到 `~/.reasonix/skills/`；改动的 router 也同步。
+4. `bash scripts/install-symlinks.sh`（为新 leaf 在 `.claude`/`.reasonix` 建 symlink）。
 5. 若该 leaf 是某父 leaf 的深子域，父 leaf 决策树加下钻指针（参考 `ctf-crypto-rsa` → `ctf-crypto-rsa-related-message`）。
+6. `git add -A && git commit && git push`。
+
+**改任意 skill**：直接编辑仓库内 `skills/<x>/SKILL.md`（= 两个加载路径即时生效），`git commit && git push`。**不再 cp 同步。**
 
 **决定拆几级**：默认三级。只有满足 §5 三条（独立 + 足够深 + 决策树可路由）才四级。绝不为一行命令的小攻击拆四级。
 
-**同步命令速记**（.claude → .reasonix）：
+**同步 / 校验命令速记**：
 ```bash
-cp -r ~/.claude/skills/<new-leaf> ~/.reasonix/skills/
-cp ~/.claude/skills/<changed-skill>/SKILL.md ~/.reasonix/skills/<changed-skill>/SKILL.md
-# 校验
-for d in ~/.claude/skills/ctf-*; do n=$(basename "$d"); diff -q "$d/SKILL.md" ~/.reasonix/skills/$n/SKILL.md; done
+cd ~/projects/ctf-skills
+bash scripts/install-symlinks.sh   # 建/修复两侧 symlink（幂等）
+bash scripts/verify-tree.sh        # 校验 26 symlink + 路由表闭合
+git add -A && git commit -m "..." && git push
 ```
