@@ -1,0 +1,3 @@
+{
+  "install": "bash scripts/install.sh && bash scripts/verify-tree.sh"
+}
